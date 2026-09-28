@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Data Duel</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&family=Rubik+Mono+One&display=swap">
+<style>
+:root{
+  --bg:#231433; --card:#34204A; --card-line:#5B3F7D; --seg:#3F2A58;
+  --text:#F5EEFF; --muted:#C7B4E0; --ink:#231433;
+  --p1:#3DD6F5; --p1-sh:#1C8AA3;
+  --p2:#FF8A3D; --p2-sh:#B5561A;
+  --ok:#34C27A; --ok-sh:#1E7A4B; --ok-ink:#10261A;
+  --bad:#F0506E; --bad-sh:#A32C44;
+  --mono:'Rubik Mono One','Arial Black',system-ui,sans-serif;
+  --body:'Onest',system-ui,'Segoe UI',Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{
+  background-color:var(--bg);
+  background-image:radial-gradient(rgba(255,255,255,.08) 1.5px,transparent 1.5px);
+  background-size:28px 28px;
+  color:var(--text); font-family:var(--body);
+  overflow:hidden; user-select:none; -webkit-user-select:none;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+}
+button{font-family:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.hidden{display:none!important}
+.screen{display:none;height:100vh;height:100dvh}
+.screen.active{display:flex;flex-direction:column}
+
+/* ---------- Setup ---------- */
+#setup{align-items:center;justify-content:center;padding:3vh 4vw;overflow:auto}
+.setup-inner{width:100%;max-width:1100px;display:flex;flex-direction:column;gap:clamp(16px,3vh,32px)}
+.brand{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.brand h1{margin:0;font-family:var(--mono);font-weight:400;font-size:clamp(44px,7vw,112px);line-height:1;letter-spacing:.02em}
+.brand h1 .d1{color:var(--p1)} .brand h1 .d2{color:var(--p2)}
+.brand p{margin:0;color:var(--muted);font-size:clamp(16px,1.5vw,22px)}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:clamp(16px,3vw,48px)}
+.name-field{display:flex;flex-direction:column;gap:8px}
+.name-field label{font-family:var(--mono);font-size:clamp(14px,1.2vw,18px)}
+.name-field.p1 label{color:var(--p1)} .name-field.p2 label{color:var(--p2)}
+.name-field input{
+  user-select:text;-webkit-user-select:text;
+  font:700 clamp(20px,2vw,30px) var(--body);color:var(--text);
+  background:var(--card);border:3px solid;border-radius:14px;padding:14px 18px;width:100%;
+}
+.name-field.p1 input{border-color:var(--p1)} .name-field.p2 input{border-color:var(--p2)}
+.name-field input::placeholder{color:#8F7AAE}
+.opt-group{display:flex;flex-direction:column;gap:10px}
+.opt-group .lbl{font-size:clamp(15px,1.3vw,19px);color:var(--muted);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:10px}
+.chip{
+  font:700 clamp(15px,1.35vw,20px) var(--body);color:var(--text);
+  background:transparent;border:2px solid var(--card-line);border-radius:999px;padding:12px 22px;min-height:48px;
+}
+.chip.sel{background:var(--text);color:var(--ink);border-color:var(--text)}
+.chip:disabled{opacity:.35;cursor:not-allowed}
+.hint{font-size:14px;color:var(--muted);min-height:1.2em}
+.setup-actions{display:flex;justify-content:center;gap:16px;align-items:center;flex-wrap:wrap}
+.big-btn{
+  font-family:var(--mono);font-size:clamp(20px,2vw,30px);color:var(--ink);
+  background:var(--text);border:0;border-radius:18px;padding:20px 48px;
+  box-shadow:0 8px 0 #9C88BC;transition:transform .08s,box-shadow .08s;
+}
+.big-btn:active{transform:translateY(6px);box-shadow:0 2px 0 #9C88BC}
+.tool-btn{
+  font:600 16px var(--body);color:var(--text);background:var(--card);
+  border:2px solid var(--card-line);border-radius:999px;padding:12px 20px;min-height:48px;
+}
+
+/* ---------- Game ---------- */
+#game{gap:clamp(10px,2vh,20px);padding:clamp(12px,2.6vh,28px) clamp(16px,3vw,48px) clamp(18px,4vh,40px)}
+.hud{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(12px,2.2vw,32px)}
+.pl{display:flex;flex-direction:column;gap:10px;min-width:0}
+.pl.p2{align-items:flex-end}
+.pl-name{font-family:var(--mono);font-size:clamp(16px,1.9vw,30px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pl.p1 .pl-name{color:var(--p1)} .pl.p2 .pl-name{color:var(--p2)}
+.pl-name .sc{display:inline-block}
+.pl-name .sc.bump{animation:bump .5s ease}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.5)}100%{transform:scale(1)}}
+.segs{width:100%;display:grid;gap:5px}
+.segs div{height:clamp(10px,1.4vh,16px);background:var(--seg)}
+.pl.p1 .segs div.on{background:var(--p1)}
+.pl.p2 .segs div.on{background:var(--p2)}
+.center{display:flex;align-items:center;justify-content:center;min-width:clamp(90px,9vw,150px)}
+.timer{position:relative;width:clamp(76px,7.4vw,124px);aspect-ratio:1}
+.timer svg{width:100%;height:100%;transform:rotate(-90deg)}
+.timer circle{fill:none;stroke-width:9}
+.timer .track{stroke:var(--seg)}
+.timer .bar{stroke:var(--text);stroke-linecap:round;transition:stroke .3s}
+.timer.hurry .bar{stroke:var(--bad)}
+.timer span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:clamp(24px,2.6vw,42px)}
+.timer.hurry span{color:var(--bad)}
+.pill{font-family:var(--mono);font-size:clamp(14px,1.4vw,22px);padding:12px 22px;border-radius:999px;white-space:nowrap}
+.pill.ok{background:var(--ok);color:var(--ok-ink);animation:pop .35s ease}
+.pill.none{background:var(--text);color:var(--ink);animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.6);opacity:0}100%{transform:scale(1);opacity:1}}
+.banner{align-self:center;padding:10px 28px;background:var(--text);color:var(--ink);border-radius:999px;font-family:var(--mono);font-size:clamp(14px,1.4vw,20px);animation:pop .4s ease}
+
+.qcard{background:var(--card);border:2px solid var(--card-line);border-radius:16px;padding:clamp(16px,2.6vh,28px) clamp(20px,2.8vw,40px);display:flex;flex-direction:column;gap:clamp(6px,1.2vh,12px)}
+.qmeta{display:flex;justify-content:space-between;gap:16px;font-size:clamp(13px,1.15vw,17px);font-weight:600;color:var(--muted)}
+.qtext{font-size:clamp(22px,2.65vw,46px);font-weight:600;line-height:1.3}
+.blank{display:inline-block;min-width:4.5em;border-bottom:.12em solid var(--text);margin:0 .15em;height:1em;vertical-align:baseline}
+.blank.filled{min-width:0;height:auto;border:0;padding:0 .35em;background:var(--ok);color:var(--ok-ink);border-radius:8px;font-weight:800;animation:pop .35s ease}
+.reveal{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+.auto{height:6px;border-radius:3px;background:var(--seg);overflow:hidden}
+.auto div{height:100%;width:100%;background:var(--muted)}
+.explain{flex:1;font-size:clamp(15px,1.4vw,22px);line-height:1.45;color:#E4D8F5}
+.explain b{color:var(--text)}
+
+.arena{flex:1;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,5vw,72px)}
+.side{display:grid;gap:clamp(10px,2vh,18px) clamp(10px,1.1vw,16px);min-height:0}
+.side.four{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.side.two{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.ans{
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:8px 14px;border:0;border-radius:16px;min-height:0;
+  color:var(--ink);font-family:var(--body);font-weight:800;
+  font-size:clamp(17px,2vw,34px);line-height:1.15;overflow-wrap:break-word;hyphens:auto;-webkit-hyphens:auto;
+  transition:transform .08s,box-shadow .08s,opacity .2s;
+}
+.ans.long{font-size:clamp(15px,1.6vw,28px)}
+.side.two .ans{font-family:var(--mono);font-weight:400;font-size:clamp(18px,2.1vw,36px)}
+.ans.p1{background:var(--p1);box-shadow:0 8px 0 var(--p1-sh)}
+.ans.p2{background:var(--p2);box-shadow:0 8px 0 var(--p2-sh)}
+.ans:active{transform:translateY(6px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
+.ans.dim{opacity:.3}
+.ans.wrong{background:var(--bad);color:#fff;box-shadow:0 8px 0 var(--bad-sh);animation:shake .35s}
+.ans.win{background:var(--ok);color:var(--ok-ink);box-shadow:0 8px 0 var(--ok-sh);animation:pop .3s}
+.ans.show{background:transparent;color:var(--ok);box-shadow:none;border:3px solid var(--ok)}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+
+.menu-btn{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;font:600 14px var(--body);color:var(--muted);background:transparent;border:1px solid var(--card-line);border-radius:999px;padding:8px 16px;min-height:40px}
+
+/* ---------- Overlays ---------- */
+.overlay{position:fixed;inset:0;background:rgba(20,10,32,.88);display:flex;align-items:center;justify-content:center;z-index:10}
+#countdown span{font-family:var(--mono);font-size:clamp(90px,16vw,260px);animation:pop .5s ease}
+.modal{background:var(--card);border:2px solid var(--card-line);border-radius:20px;padding:32px;display:flex;flex-direction:column;gap:14px;min-width:min(420px,90vw)}
+.modal h2{margin:0 0 6px;font-family:var(--mono);font-weight:400;font-size:24px}
+.modal button{font:700 18px var(--body);padding:14px 20px;border-radius:12px;border:2px solid var(--card-line);background:transparent;color:var(--text);min-height:52px}
+.modal button.primary{background:var(--text);color:var(--ink);border-color:var(--text)}
+.modal .row{display:flex;gap:10px}
+.modal .row button{flex:1}
+
+/* ---------- Final ---------- */
+#final{overflow:auto;align-items:center;padding:4vh 4vw}
+.final-inner{width:100%;max-width:1000px;display:flex;flex-direction:column;gap:28px}
+.final-head{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.final-head .lbl{color:var(--muted);font-size:clamp(16px,1.5vw,22px);font-weight:600}
+.final-head .who{font-family:var(--mono);font-size:clamp(40px,6vw,96px);line-height:1.05;animation:pop .6s ease}
+.final-head .score{font-family:var(--mono);font-size:clamp(28px,3.4vw,52px)}
+.final-head .note{color:var(--muted);font-size:clamp(15px,1.4vw,20px);max-width:40em;line-height:1.45}
+.final-head .score .a{color:var(--p1)} .final-head .score .b{color:var(--p2)}
+.stats{display:flex;flex-direction:column;gap:10px;background:var(--card);border:2px solid var(--card-line);border-radius:16px;padding:20px 24px}
+.stats h2,.review h2{margin:0 0 6px;font-size:20px}
+.stat-row{display:grid;grid-template-columns:minmax(0,1fr) 200px auto;gap:16px;align-items:center;font-size:17px}
+.stat-bar{height:12px;background:var(--seg);border-radius:6px;overflow:hidden}
+.stat-bar div{height:100%;background:var(--ok)}
+.review{display:flex;flex-direction:column;gap:12px}
+.review ol{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:12px}
+.review li{background:var(--card);border:2px solid var(--card-line);border-radius:14px;padding:16px 20px;display:flex;flex-direction:column;gap:6px;user-select:text}
+.review .rq{font-size:19px;font-weight:600;line-height:1.35}
+.review .ra{color:var(--ok);font-weight:700}
+.review .rx{color:#E4D8F5;line-height:1.45}
+.review .rw{font-size:15px;color:var(--muted)}
+.review .rw .n1{color:var(--p1);font-weight:700} .review .rw .n2{color:var(--p2);font-weight:700}
+.final-actions{display:flex;justify-content:center;gap:16px;flex-wrap:wrap;padding-bottom:20px}
+
+@media (max-width:700px){
+  .names{grid-template-columns:1fr}
+  .side.four{grid-template-columns:1fr;grid-template-rows:none}
+  .stat-row{grid-template-columns:1fr auto}
+  .stat-bar{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ============ SETUP ============ -->
+<section id="setup" class="screen active">
+  <div class="setup-inner">
+    <div class="brand">
+      <h1><span class="d1">Data</span> <span class="d2">Duel</span></h1>
+      <p>Дуэль по курсу «Анализ и визуализация данных»</p>
+    </div>
+
+    <div class="names">
+      <div class="name-field p1">
+        <label for="name1">Игрок слева</label>
+        <input id="name1" maxlength="16" placeholder="Игрок 1" autocomplete="off">
+      </div>
+      <div class="name-field p2">
+        <label for="name2">Игрок справа</label>
+        <input id="name2" maxlength="16" placeholder="Игрок 2" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="opt-group">
+      <div class="lbl">Тема</div>
+      <div class="chips" id="topicChips"></div>
+    </div>
+
+    <div class="opt-group">
+      <div class="lbl">Количество вопросов</div>
+      <div class="chips" id="countChips">
+        <button class="chip" data-count="5">5</button>
+        <button class="chip sel" data-count="10">10</button>
+        <button class="chip" data-count="15">15</button>
+      </div>
+      <div class="hint" id="countHint"></div>
+    </div>
+
+    <div class="opt-group">
+      <div class="lbl">Время на вопрос</div>
+      <div class="chips" id="timeChips">
+        <button class="chip" data-time="15">15 секунд</button>
+        <button class="chip sel" data-time="20">20 секунд</button>
+        <button class="chip" data-time="30">30 секунд</button>
+      </div>
+    </div>
+
+    <div class="setup-actions">
+      <button class="tool-btn" id="fsBtn1">Во весь экран</button>
+      <button class="big-btn" id="startBtn">Начать дуэль</button>
+      <button class="tool-btn" id="soundBtn1">Звук: вкл</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GAME ============ -->
+<section id="game" class="screen">
+  <div class="hud">
+    <div class="pl p1">
+      <div class="pl-name"><span id="n1"></span> <span class="sc" id="s1">0</span></div>
+      <div class="segs" id="seg1"></div>
+    </div>
+    <div class="center">
+      <div class="timer" id="timer">
+        <svg viewBox="0 0 100 100"><circle class="track" cx="50" cy="50" r="42"/><circle class="bar" id="timerBar" cx="50" cy="50" r="42"/></svg>
+        <span id="tnum">20</span>
+      </div>
+      <div class="pill hidden" id="pill"></div>
+    </div>
+    <div class="pl p2">
+      <div class="pl-name"><span class="sc" id="s2">0</span> <span id="n2"></span></div>
+      <div class="segs" id="seg2"></div>
+    </div>
+  </div>
+
+  <div class="banner hidden" id="banner"></div>
+
+  <div class="qcard">
+    <div class="qmeta"><span id="qmeta"></span><span id="qtopic"></span></div>
+    <div class="qtext" id="qtext"></div>
+    <div class="reveal hidden" id="reveal">
+      <div class="explain" id="explain"></div>
+      <div class="auto"><div id="autoBar"></div></div>
+    </div>
+  </div>
+
+  <div class="arena">
+    <div class="side" id="side0"></div>
+    <div class="side" id="side1"></div>
+  </div>
+
+  <button class="menu-btn" id="menuBtn">Меню</button>
+</section>
+
+<!-- ============ FINAL ============ -->
+<section id="final" class="screen">
+  <div class="final-inner">
+    <div class="final-head">
+      <div class="lbl" id="winLbl">Победитель</div>
+      <div class="who" id="winName"></div>
+      <div class="score" id="finalScore"></div>
+      <div class="note hidden" id="finalNote"></div>
+    </div>
+    <div class="stats hidden" id="stats"></div>
+    <div class="review">
+      <h2>Разбор вопросов с ошибками</h2>
+      <ol id="reviewList"></ol>
+    </div>
+    <div class="final-actions">
+      <button class="big-btn" id="rematchBtn">Реванш</button>
+      <button class="tool-btn" id="newBtn">Новая игра</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OVERLAYS ============ -->
+<div class="overlay hidden" id="countdown"><span></span></div>
+
+<div class="overlay hidden" id="menuModal">
+  <div class="modal">
+    <h2>Пауза</h2>
+    <button class="primary" id="resumeBtn">Продолжить игру</button>
+    <button id="endBtn">Завершить и показать итоги</button>
+    <button id="homeBtn">Выйти в главное меню</button>
+    <div class="row">
+      <button id="fsBtn2">Во весь экран</button>
+      <button id="soundBtn2">Звук: вкл</button>
+    </div>
+  </div>
+</div>
+
+<script src="questions.js"></script>
+<script>
+(function(){
+  const DATA = window.DATA_DUEL;
+  const $ = id => document.getElementById(id);
+  if (!DATA || !DATA.topics) {
+    document.body.innerHTML = '<p style="padding:40px;font-size:22px">Не найден файл questions.js. Положите его в ту же папку, что и index.html.</p>';
+    return;
+  }
+
+  const TYPE_LABEL = { choice: 'Выберите ответ', tf: 'Верно или неверно', blank: 'Заполните пропуск' };
+  const settings = { topic: 'all', count: 10, time: 20 };
+  const AUTO_MS = 5000;                       // пауза перед следующим вопросом
+  const MIN_TO_WIN = { 5: 3, 10: 5, 15: 8 };  // минимум правильных ответов для победы
+  function minToWin(n){ return MIN_TO_WIN[n] || Math.round(n * 0.45); }
+  function word(n){ const a = n % 10, b = n % 100; return (a === 1 && b !== 11) ? 'правильный ответ' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'правильных ответа' : 'правильных ответов'; }
+  let soundOn = true;
+  let G = null;
+
+  /* ---------- helpers ---------- */
+  function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function tagged(ti){ return DATA.topics[ti].questions.map(q => Object.assign({}, q, { topicIndex: ti })); }
+  function poolSize(topic){ return topic === 'all' ? DATA.topics.reduce((s, t) => s + t.questions.length, 0) : DATA.topics[topic].questions.length; }
+  function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+  function el(tag, cls, text){ const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  /* ---------- sound ---------- */
+  let actx = null;
+  function tone(freq, dur, type, delay){
+    if (!soundOn) return;
+    try {
+      actx = actx || new (window.AudioContext || window.webkitAudioContext)();
+      const t = actx.currentTime + (delay || 0);
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = type || 'square'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.12, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) {}
+  }
+  const sfx = {
+    count(){ tone(440, .15, 'square'); },
+    go(){ tone(880, .3, 'square'); },
+    win(){ tone(523, .12, 'square'); tone(659, .12, 'square', .1); tone(784, .25, 'square', .2); },
+    wrong(){ tone(150, .3, 'sawtooth'); },
+    none(){ tone(392, .18, 'triangle'); tone(262, .35, 'triangle', .16); },
+    end(){ [523, 659, 784, 1047].forEach((f, i) => tone(f, .22, 'square', i * .14)); }
+  };
+  function setSound(on){ soundOn = on; ['soundBtn1', 'soundBtn2'].forEach(id => $(id).textContent = 'Звук: ' + (on ? 'вкл' : 'выкл')); }
+  $('soundBtn1').onclick = $('soundBtn2').onclick = () => setSound(!soundOn);
+
+  function toggleFs(){
+    const d = document;
+    if (!d.fullscreenElement) { (d.documentElement.requestFullscreen || d.documentElement.webkitRequestFullscreen || function(){}).call(d.documentElement); }
+    else { (d.exitFullscreen || d.webkitExitFullscreen || function(){}).call(d); }
+  }
+  $('fsBtn1').onclick = $('fsBtn2').onclick = toggleFs;
+
+  /* ---------- setup ---------- */
+  const topicChips = $('topicChips');
+  const topicOpts = [{ id: 'all', label: 'Все темы' }].concat(DATA.topics.map((t, i) => ({ id: i, label: t.short })));
+  topicOpts.forEach(o => {
+    const b = el('button', 'chip' + (o.id === settings.topic ? ' sel' : ''), o.label);
+    b.onclick = () => { settings.topic = o.id; topicChips.querySelectorAll('.chip').forEach(c => c.classList.toggle('sel', c === b)); syncCounts(); };
+    topicChips.appendChild(b);
+  });
+  function syncCounts(){
+    const size = poolSize(settings.topic);
+    let hint = '';
+    $('countChips').querySelectorAll('.chip').forEach(c => {
+      const n = +c.dataset.count; c.disabled = n > size;
+      if (c.disabled) hint = 'В этой теме ' + size + ' вопросов, поэтому режим на ' + n + ' недоступен.';
+    });
+    if (settings.count > size) {
+      const ok = [...$('countChips').querySelectorAll('.chip')].filter(c => !c.disabled).pop();
+      settings.count = +ok.dataset.count;
+    }
+    $('countChips').querySelectorAll('.chip').forEach(c => c.classList.toggle('sel', +c.dataset.count === settings.count));
+    $('countHint').textContent = hint || ('Для победы нужно минимум ' + minToWin(settings.count) + ' ' + word(minToWin(settings.count)) + '.');
+  }
+  $('countChips').querySelectorAll('.chip').forEach(c => c.onclick = () => { settings.count = +c.dataset.count; syncCounts(); });
+  $('timeChips').querySelectorAll('.chip').forEach(c => c.onclick = () => {
+    settings.time = +c.dataset.time; $('timeChips').querySelectorAll('.chip').forEach(x => x.classList.toggle('sel', x === c));
+  });
+  syncCounts();
+
+  /* ---------- question selection ---------- */
+  function pick(){
+    if (settings.topic !== 'all') {
+      const qs = shuffle(tagged(settings.topic));
+      return { list: qs.slice(0, settings.count), rest: qs.slice(settings.count) };
+    }
+    const lists = DATA.topics.map((_, i) => shuffle(tagged(i)));
+    const chosen = []; let k = 0;
+    while (chosen.length < settings.count && lists.some(l => l.length)) {
+      const l = lists[k % lists.length]; if (l.length) chosen.push(l.shift()); k++;
+    }
+    return { list: shuffle(chosen), rest: [].concat(...lists) };
+  }
+  function prepare(q){
+    if (q.type === 'tf') return Object.assign({}, q, { options: ['Верно', 'Неверно'], correct: q.answer ? 0 : 1 });
+    const perm = shuffle(q.options.map((_, i) => i));
+    return Object.assign({}, q, { options: perm.map(i => q.options[i]), correct: perm.indexOf(0) });
+  }
+
+  /* ---------- game flow ---------- */
+  function startGame(){
+    const p = pick();
+    G = {
+      names: [$('name1').value.trim() || 'Игрок 1', $('name2').value.trim() || 'Игрок 2'],
+      list: p.list, rest: p.rest, base: p.list.length, i: 0,
+      scores: [0, 0], log: [], sudden: false, paused: false, timer: null, mixed: settings.topic === 'all'
+    };
+    $('n1').textContent = G.names[0]; $('n2').textContent = G.names[1];
+    renderScores(false);
+    show('game');
+    countdown(showQuestion);
+  }
+
+  function countdown(done){
+    const ov = $('countdown'), sp = ov.querySelector('span');
+    ov.classList.remove('hidden');
+    const steps = ['3', '2', '1', 'Старт!'];
+    let i = 0;
+    (function step(){
+      if (i < steps.length) {
+        sp.textContent = steps[i]; sp.style.animation = 'none'; void sp.offsetWidth; sp.style.animation = '';
+        (i < 3 ? sfx.count : sfx.go)(); i++; setTimeout(step, i === 4 ? 600 : 750);
+      } else { ov.classList.add('hidden'); done(); }
+    })();
+  }
+
+  function renderScores(bumpIdx){
+    [0, 1].forEach(p => {
+      const s = $('s' + (p + 1)); s.textContent = G.scores[p];
+      if (bumpIdx === p) { s.classList.remove('bump'); void s.offsetWidth; s.classList.add('bump'); }
+      const seg = $('seg' + (p + 1)); const n = Math.max(G.base, G.scores[p]);
+      seg.style.gridTemplateColumns = 'repeat(' + n + ', minmax(0,1fr))';
+      seg.innerHTML = '';
+      for (let k = 0; k < n; k++) {
+        const on = p === 0 ? k < G.scores[0] : k >= n - G.scores[1];
+        seg.appendChild(el('div', on ? 'on' : ''));
+      }
+    });
+  }
+
+  function renderText(q, filled){
+    const box = $('qtext'); box.innerHTML = '';
+    if (q.type !== 'blank') { box.textContent = q.q; return; }
+    const parts = q.q.split('___');
+    parts.forEach((part, idx) => {
+      box.appendChild(document.createTextNode(part));
+      if (idx < parts.length - 1) box.appendChild(el('span', filled ? 'blank filled' : 'blank', filled ? q.options[q.correct] : '\u00a0'));
+    });
+  }
+
+  function showQuestion(){
+    const q = prepare(G.list[G.i]);
+    G.cur = q; G.locked = [false, false]; G.wrong = [null, null]; G.resolved = false;
+    $('qmeta').textContent = (G.sudden ? 'Решающий вопрос' : 'Вопрос ' + (G.i + 1) + ' из ' + G.base) + '. ' + TYPE_LABEL[q.type];
+    $('qtopic').textContent = G.mixed ? DATA.topics[q.topicIndex].short : '';
+    renderText(q, false);
+    $('reveal').classList.add('hidden');
+    $('pill').classList.add('hidden'); $('timer').classList.remove('hidden');
+    const bn = $('banner');
+    if (G.sudden) { bn.textContent = 'Ничья ' + G.scores[0] + ' : ' + G.scores[1] + '. Решающий вопрос'; bn.classList.remove('hidden'); }
+    else bn.classList.add('hidden');
+
+    [0, 1].forEach(p => {
+      const side = $('side' + p);
+      side.className = 'side ' + (q.options.length === 2 ? 'two' : 'four');
+      side.innerHTML = '';
+      q.options.forEach((opt, k) => {
+        const b = el('button', 'ans p' + (p + 1) + (opt.length > 22 ? ' long' : ''), opt);
+        b.addEventListener('pointerdown', e => { e.preventDefault(); answer(p, k); });
+        b.addEventListener('click', e => { if (e.detail === 0) answer(p, k); });
+        b.addEventListener('contextmenu', e => e.preventDefault());
+        side.appendChild(b);
+      });
+    });
+    startTimer();
+  }
+
+  function btn(p, k){ return $('side' + p).children[k]; }
+
+  function answer(p, k){
+    if (!G || G.resolved || G.locked[p] || G.paused) return;
+    if (k === G.cur.correct) { G.scores[p]++; resolve(p, 'win'); return; }
+    G.locked[p] = true; G.wrong[p] = k;
+    btn(p, k).classList.add('wrong');
+    [...$('side' + p).children].forEach((b, i) => { if (i !== k) b.classList.add('dim'); });
+    sfx.wrong();
+    if (G.locked[0] && G.locked[1]) resolve(null, 'both');
+  }
+
+  function resolve(winner, reason){
+    G.resolved = true; stopTimer();
+    const q = G.cur;
+    [0, 1].forEach(p => {
+      [...$('side' + p).children].forEach((b, k) => {
+        b.classList.remove('dim');
+        if (k === q.correct) b.classList.add(p === winner ? 'win' : 'show');
+        else if (k !== G.wrong[p]) b.classList.add('dim');
+      });
+    });
+    const pill = $('pill');
+    $('timer').classList.add('hidden'); pill.classList.remove('hidden');
+    if (winner !== null) { pill.className = 'pill ok'; pill.textContent = '+1 ' + G.names[winner]; sfx.win(); }
+    else { pill.className = 'pill none'; pill.textContent = reason === 'both' ? 'Оба ошиблись' : 'Время вышло'; sfx.none(); }
+    renderScores(winner);
+    if (q.type === 'blank') renderText(q, true);
+
+    const ex = $('explain'); ex.innerHTML = '';
+    const b = el('b', null, 'Правильный ответ: ' + q.options[q.correct] + '. ');
+    ex.appendChild(b); ex.appendChild(document.createTextNode(q.explain || ''));
+    $('reveal').classList.remove('hidden');
+    startAuto();
+    G.log.push({ q: q, winner: winner, wrong: G.wrong.slice(), reason: reason });
+  }
+
+  function next(){
+    if (!G || !G.resolved) return;
+    if (G.auto) { clearInterval(G.auto); G.auto = null; }
+    if (G.i < G.list.length - 1) { G.i++; showQuestion(); return; }
+    if (G.scores[0] === G.scores[1] && G.scores[0] >= minToWin(G.base)) {
+      let idx = G.rest.findIndex(q => q.type === 'tf');
+      if (idx < 0 && G.rest.length) idx = 0;
+      let q;
+      if (idx >= 0) q = G.rest.splice(idx, 1)[0];
+      else {
+        const all = settings.topic === 'all' ? [].concat(...DATA.topics.map((_, i) => tagged(i))) : tagged(settings.topic);
+        q = all[Math.floor(Math.random() * all.length)];
+      }
+      G.list.push(q); G.i++; G.sudden = true; showQuestion(); return;
+    }
+    finish();
+  }
+  document.addEventListener('keydown', e => {
+    if ((e.code === 'Space' || e.code === 'Enter') && $('game').classList.contains('active') && G && G.resolved && $('menuModal').classList.contains('hidden')) { e.preventDefault(); next(); }
+  });
+
+  /* ---------- timer ---------- */
+  const C = 2 * Math.PI * 42;
+  $('timerBar').style.strokeDasharray = C;
+  function startTimer(){
+    stopTimer();
+    G.total = settings.time * 1000; G.remaining = G.total; G.last = performance.now();
+    drawTimer();
+    G.timer = setInterval(() => {
+      const now = performance.now();
+      if (!G.paused) G.remaining -= now - G.last;
+      G.last = now; drawTimer();
+      if (G.remaining <= 0 && !G.resolved) resolve(null, 'time');
+    }, 100);
+  }
+  function stopTimer(){ if (G && G.timer) { clearInterval(G.timer); G.timer = null; } if (G && G.auto) { clearInterval(G.auto); G.auto = null; } }
+  function startAuto(){
+    G.autoLeft = AUTO_MS; G.last = performance.now();
+    $('autoBar').style.width = '100%';
+    G.auto = setInterval(() => {
+      const now = performance.now();
+      if (!G.paused) G.autoLeft -= now - G.last;
+      G.last = now;
+      $('autoBar').style.width = Math.max(0, G.autoLeft / AUTO_MS * 100) + '%';
+      if (G.autoLeft <= 0) { clearInterval(G.auto); G.auto = null; next(); }
+    }, 50);
+  }
+  function drawTimer(){
+    const r = Math.max(0, G.remaining);
+    $('timerBar').style.strokeDashoffset = C * (1 - r / G.total);
+    $('tnum').textContent = Math.ceil(r / 1000);
+    $('timer').classList.toggle('hurry', r <= 5000);
+  }
+
+  /* ---------- menu ---------- */
+  $('menuBtn').onclick = () => { if (!G) return; G.paused = true; $('menuModal').classList.remove('hidden'); };
+  $('resumeBtn').onclick = () => { G.paused = false; G.last = performance.now(); $('menuModal').classList.add('hidden'); };
+  $('endBtn').onclick = () => { $('menuModal').classList.add('hidden'); finish(); };
+  $('homeBtn').onclick = () => { $('menuModal').classList.add('hidden'); stopTimer(); G = null; show('setup'); };
+
+  /* ---------- final ---------- */
+  function finish(){
+    stopTimer();
+    const [a, b] = G.scores;
+    const who = $('winName'), note = $('finalNote'), need = minToWin(G.base);
+    note.classList.add('hidden');
+    if (Math.max(a, b) < need) {
+      $('winLbl').textContent = 'Результат'; who.textContent = 'Победителя нет'; who.style.color = 'var(--text)';
+      note.textContent = 'Для победы нужно набрать больше соперника и не меньше ' + need + ' ' + word(need) + ' из ' + G.base + '.';
+      note.classList.remove('hidden');
+    } else if (a === b) { $('winLbl').textContent = 'Результат'; who.textContent = 'Ничья'; who.style.color = 'var(--text)'; }
+    else { const w = a > b ? 0 : 1; $('winLbl').textContent = 'Победитель'; who.textContent = G.names[w]; who.style.color = w === 0 ? 'var(--p1)' : 'var(--p2)'; }
+    const fs = $('finalScore'); fs.innerHTML = '';
+    fs.appendChild(el('span', 'a', G.names[0] + ' ' + a)); fs.appendChild(document.createTextNode(' : ')); fs.appendChild(el('span', 'b', b + ' ' + G.names[1]));
+
+    const stats = $('stats'); stats.innerHTML = '';
+    if (G.mixed && G.log.length) {
+      stats.appendChild(el('h2', null, 'Результаты по темам'));
+      DATA.topics.forEach((t, ti) => {
+        const rows = G.log.filter(r => r.q.topicIndex === ti); if (!rows.length) return;
+        const ok = rows.filter(r => r.winner !== null && r.wrong[0] === null && r.wrong[1] === null).length;
+        const row = el('div', 'stat-row');
+        row.appendChild(el('div', null, t.short));
+        const bar = el('div', 'stat-bar'); const fill = el('div'); fill.style.width = Math.round(ok / rows.length * 100) + '%'; bar.appendChild(fill); row.appendChild(bar);
+        row.appendChild(el('div', null, 'без ошибок: ' + ok + ' из ' + rows.length));
+        stats.appendChild(row);
+      });
+      stats.classList.remove('hidden');
+    } else stats.classList.add('hidden');
+
+    const list = $('reviewList'); list.innerHTML = '';
+    const bad = G.log.filter(r => r.winner === null || r.wrong[0] !== null || r.wrong[1] !== null);
+    if (!bad.length) list.appendChild(el('li', null, 'Ошибок не было: на каждый вопрос правильно ответили с первой попытки.'));
+    bad.forEach(r => {
+      const q = r.q, li = el('li');
+      li.appendChild(el('div', 'rq', q.type === 'blank' ? q.q.replace('___', '«' + q.options[q.correct] + '»') : q.q));
+      li.appendChild(el('div', 'ra', 'Правильный ответ: ' + q.options[q.correct]));
+      if (q.explain) li.appendChild(el('div', 'rx', q.explain));
+      const w = el('div', 'rw');
+      const parts = [];
+      [0, 1].forEach(p => { if (r.wrong[p] !== null) parts.push([p, q.options[r.wrong[p]]]); });
+      if (parts.length) {
+        w.appendChild(document.createTextNode('Ошибки: '));
+        parts.forEach(([p, opt], i) => {
+          if (i) w.appendChild(document.createTextNode(', '));
+          w.appendChild(el('span', 'n' + (p + 1), G.names[p])); w.appendChild(document.createTextNode(' — ' + opt));
+        });
+      } else w.textContent = 'Никто не ответил вовремя.';
+      li.appendChild(w);
+      list.appendChild(li);
+    });
+    show('final'); $('final').scrollTop = 0; sfx.end();
+  }
+  $('rematchBtn').onclick = startGame;
+  $('newBtn').onclick = () => { G = null; show('setup'); };
+  $('startBtn').onclick = startGame;
+})();
+</script>
+</body>
+</html>
